@@ -2,30 +2,47 @@
 /// <reference types="emscripten" />.
 
 
+
+// @ts-ignore
+import {Module as em} from "./gnugo.js";
 import IO from "./IO";
+import Gtp from "./gtp";
 
-export{};
-const statusElement = document.getElementById('status') as HTMLDivElement;
-const progressElement = document.getElementById('progress') as HTMLProgressElement;
-const spinnerElement = document.getElementById('spinner') as HTMLDivElement;
+//export{};
 
 
-(<any>window).Module = {};
 
-Module.arguments = [ '--mode', 'gtp'];
+let m: EmscriptenModule = <EmscriptenModule>{};
 
-const io = new IO;
+m.arguments = [ '--mode', 'gtp'];
 
-io.on('out-eol', () => {
-    console.log("eol:", io.getOutputLine());
+export const io = new IO;
+
+export const gtp = new Gtp(io);
+
+// io.on('out-eol', () => {
+//     console.log("eol:", io.getOutputLine());
+// });
+//
+// io.on('err-eol', () => {
+//     console.warn("err:", io.getErrorLine());
+// });
+
+m.preRun = [ IO.prototype.initStreams.bind(io) ];
+m.postRun = [];
+
+m.onRuntimeInitialized = (async () => {
+    const outputElement: HTMLDivElement = document.querySelector(".console-output") as HTMLDivElement;
+    let response: string;
+    // response = await gtp.command("help");
+    // outputElement.innerHTML = response;
+    response = await gtp.command("showboard");
+    outputElement.innerHTML = response;
 });
 
-io.on('err-eol', () => {
-    console.warn("err:", io.getErrorLine());
-});
+export const Module = em(m);
 
-Module.preRun = [ IO.prototype.initStreams.bind(io) ];
-Module.postRun = [];
+
 
 
 

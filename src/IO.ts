@@ -1,6 +1,7 @@
 // Low level IO from emscripten
-import EventEmitter from "eventemitter3";
-
+/// <reference types="emscripten" />
+import {EventEmitter} from "eventemitter3";
+import {Module} from "./index.js";
 export default class IO extends EventEmitter {
 
     private readonly inBuf_: number[] = [];
@@ -8,7 +9,7 @@ export default class IO extends EventEmitter {
     private readonly errBuf_: number[] = [];
 
     putInputString(s: string) {
-        Array.prototype.push.apply(this.inBuf_, intArrayFromString(s, true));
+        Array.prototype.push.apply(this.inBuf_, Module.intArrayFromString(s, true));
     }
 
     getInput(): number | null {
@@ -18,7 +19,7 @@ export default class IO extends EventEmitter {
     private putOutput_( c: number, buf : number[]) {
         const evt_prefix = buf === this.outBuf_ ? 'out-' : 'err-'
         buf.push(c);
-        this.emit(evt_prefix + 'c', c);
+        this.emit(evt_prefix + 'c', String.fromCharCode(c));
         if (c === '\n'.charCodeAt(0)) {
             this.emit(evt_prefix +  'eol');
         }
@@ -33,21 +34,21 @@ export default class IO extends EventEmitter {
 
 
     private getOutputString_(buf: number[]) : string | null {
-        const s =  intArrayToString(buf);
+        const s =  Module.intArrayToString(buf);
         buf.splice(0);
-        return s;
+        return s == '' ? null : s;
     }
 
-   private getOutputLine_(buf: number[]) : string | null {
-        const s = intArrayToString(buf);
-        if (s) {
+   private getOutputLine_(buf: number[]) : string | null{
+        const s = Module.intArrayToString(buf);
+        if (s !== '') {
             const cr_pos = s.indexOf('\n');
             if (cr_pos >= 0) {
                 buf.splice(0, cr_pos+1);
                 return s.substring(0, cr_pos);
             }
         }
-        return s;
+        return null;
     }
     getOutputLine() :  string | null {
         return this.getOutputLine_(this.outBuf_);
@@ -55,13 +56,18 @@ export default class IO extends EventEmitter {
     getErrorLine() :  string | null {
         return this.getOutputLine_(this.errBuf_);
     }
-
+    getOutputString() :  string | null {
+        return this.getOutputString_(this.outBuf_);
+    }
+    getErrorString() :  string | null {
+        return this.getOutputString_(this.errBuf_);
+    }
     initStreams() {
 
-        this.putInputString("help\n");
-        this.putInputString("showboard\n");
+        // this.putInputString("help\n");
+        // this.putInputString("showboard\n");
 
-        FS.init(
+        Module.FS.init(
             () => {
                 return this.getInput();
             },

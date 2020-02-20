@@ -7,6 +7,7 @@ import {Module as em} from "./gnugo.js";
 //const em = require(  "./gnugo.js");
 import IO from "./IO";
 import Gtp, {ParserResult, ResponseType} from "./gtp";
+import GameScene from "./scene";
 
 //export{};
 
@@ -20,13 +21,6 @@ export const io = new IO;
 
 export const gtp = new Gtp(io);
 
-// io.on('out-eol', () => {
-//     console.log("eol:", io.getOutputLine());
-// });
-//
-// io.on('err-eol', () => {
-//     console.warn("err:", io.getErrorLine());
-// });
 function initStreams()
 {
     io.initStreams();
@@ -35,78 +29,46 @@ function initStreams()
 m.preRun = [ initStreams ];
 m.postRun = [];
 
-m.onRuntimeInitialized = (async () => { await onRuntimeInitialized() } );
+// m.onRuntimeInitialized = (async () => { await onRuntimeInitialized() } );
 
 
-function doGTPCommand(command: string): Promise<ParserResult> {
+async function doGTPCommand(command: string): Promise<boolean> {
     const outputElement: HTMLDivElement = document.querySelector(".console-output") as HTMLDivElement;
-    let response: ParserResult;
-    // response = await gtp.command("help");
-    // outputElement.innerHTML = response;
-    const promise = gtp.command(command);
-   promise.then((response: ParserResult) => {
+    const response: ParserResult = await gtp.command(command);
+
         if (response.response_type == ResponseType.BAD)
             outputElement.classList.add('error');
         else
             outputElement.classList.remove('error');
 
         outputElement.innerHTML = response.html;
+        return response.response_type == ResponseType.GOOD;
 
-    });
-   return promise;
  }
 
-function setUpDomListeners() {
+function setupDOM() {
     const inputElement: HTMLInputElement = document.querySelector("#console-input") as HTMLInputElement;
-    inputElement.addEventListener('keyup', (evt: KeyboardEvent) => {
+    inputElement.addEventListener('keyup', async (evt: KeyboardEvent) => {
         if (evt.key === 'Enter')
-//            doEcho(inputElement.value);
-            doGTPCommand(inputElement.value);
-
+            if (await doGTPCommand(inputElement.value))
+                inputElement.value = '';
     });
 
+    const sceneContainerElement: HTMLDivElement = document.querySelector(".scene") as HTMLDivElement;
+    const gameScene = new GameScene(sceneContainerElement);
+    gameScene.startAnimation();
+
 }
 
-async function onRuntimeInitialized() {
-//    await doGTPCommand("\n\nname\nversion\nshowboard") ;
- //   await doGTPCommand("version") ;
-    io.on('err-eol', () => console.warn(io.getErrorLine()));
-    await doGTPCommand("name") ;
-
-//    await doEcho("hello");
-    setUpDomListeners();
-}
-
-// function doEcho(command: string): Promise<string> {
-//     const outputElement: HTMLDivElement = document.querySelector(".console-output") as HTMLDivElement;
-//     let response: ParserResult;
-//     const promise = echo(command);
-//     promise.then((response: string) => {
-//
-//         outputElement.innerHTML = response;
-//
-//     });
-//     return promise;
-// }
-//
-// function echo(s: string) : Promise<string> {
-//     const outputElement: HTMLDivElement = document.querySelector(".console-output") as HTMLDivElement;
-//     io.removeAllListeners('out-c');
-//     io.putInputString(s + '\n');
-//     return new Promise<string>((resolve, reject) => {
-//         io.on('out-c', (c: string) => {
-//             if (c === '\n') {
-//                 const s = io.getOutputLine() as string;
-//                 console.log(s);
-//                 resolve(s);
-//             }
-//
-//         });
-//     });
-// }
+(<any>window).initialized = false;
+export const myModule = em(m).then(async () => {
+    if ((<any>window).initialized)
+        return;
+    (<any>window).initialized = true;
+        io.on('err-eol', () => console.warn(io.getErrorLine()));
+        setupDOM();
+        await doGTPCommand("name");
+});
 
 
-
-
-export const myModule = em(m);
 

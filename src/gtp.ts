@@ -1,9 +1,12 @@
 // GTP interface
+// See http://www.lysator.liu.se/~gunnar/gtp/gtp2-spec-draft2/gtp2-spec.htm
+
 import IO from "./IO";
 
 enum ParserState {
     NOTHING_RECEIVED,
     WAITING_FOR_RESPONSE_CHAR,
+    WAITING_FOR_ID,
     WAITING_FOR_FIRST_NEWLINE,
     WAITING_FOR_SECOND_NEWLINE,
     PARSER_ERROR,
@@ -12,61 +15,99 @@ enum ParserState {
 
 };
 
-enum ResponseType {
+export enum ResponseType {
     UNKNOWN,
     GOOD,
     BAD
 }
 
+export interface ParserResult
+{
+    command: string;
+    response_type: ResponseType;
+    id? : number; // command id associated with this response
+    text : string;
+    html : string;
+}
+
 export default class Gtp {
 
-    private parser_error: Error | null = null;
-    private parser_state: ParserState = ParserState.NOTHING_RECEIVED;
-    private response_type: ResponseType = ResponseType.UNKNOWN;
-
-    private response_text: string = '';
-    private parser_promise?: Promise<boolean>;
 
     constructor(private io: IO) {
     }
 
-    private async parse(): Promise<boolean>
+    private async parse(command: string): Promise<ParserResult>
     {
-        const this_ = this;
-        return new Promise<boolean>((resolve, reject) => {
-            this_.io.on('out-c', (c: string) => {
-                switch (this_.parser_state) {
+        let parser_state: ParserState = ParserState.WAITING_FOR_RESPONSE_CHAR;
+        const response: ParserResult = {
+            command,
+            response_type: ResponseType.UNKNOWN,
+            text: '',
+            html: '',
+        };
+
+        const io = this.io;
+        let id = 0;
+        io.removeAllListeners('out-c');
+        io.putInputString(command +"\n");
+
+        return new Promise<ParserResult>((resolve, reject) => {
+            io.on('out-c', (c: string) => {
+                switch (parser_state) {
                     case ParserState.WAITING_FOR_RESPONSE_CHAR: {
-                        this_.response_text = '';
                         if (c === '=') {
-                            this_.parser_state = ParserState.WAITING_FOR_FIRST_NEWLINE;
-                            this_.response_type = ResponseType.GOOD;
+                            parser_state = ParserState.WAITING_FOR_ID;
+                            response.response_type = ResponseType.GOOD;
                         } else if (c === '?') {
-                            this_.parser_state = ParserState.WAITING_FOR_FIRST_NEWLINE;
-                            this_.response_type = ResponseType.BAD;
+                            parser_state = ParserState.WAITING_FOR_ID;
+                            response.response_type = ResponseType.BAD;
                         } else {
-                            this_.parser_state = ParserState.PARSER_ERROR;
-                            this_.parser_error = new Error("Expected response char, got '" + c + "' (" + c.charCodeAt(0) + ")");
-                            reject(this_.parser_error);
+                            parser_state = ParserState.PARSER_ERROR;
+                            throw new Error("Expected response char, got '" + c + "' (" + c.charCodeAt(0) + ")");
+                        }
+                        break;
+                    }
+                    case ParserState.WAITING_FOR_ID: {
+                        if (c === ' ') {
+                            response.id = id;
+                            parser_state = ParserState.WAITING_FOR_FIRST_NEWLINE;
+                            io.getOutputString(); // gobble output buffer
+                        } else  if (c === '\n') {
+                            response.id = id;
+                            parser_state = ParserState.WAITING_FOR_SECOND_NEWLINE;
+                        } else {
+                            const digit = "0123456789".indexOf(c);
+                            if (digit >= 0) {
+                                id *= 10;
+                                id += digit;
+                            } else {
+                                throw new Error("Expected digit, space or newline, got '" + c + "' (" + c.charCodeAt(0) + ")");
+
+                            }
                         }
                         break;
                     }
                     case ParserState.WAITING_FOR_FIRST_NEWLINE: {
                         if (c === '\n') {
-                            this_.parser_state = ParserState.WAITING_FOR_SECOND_NEWLINE;
+                            parser_state = ParserState.WAITING_FOR_SECOND_NEWLINE;
                         }
                         break;
                     }
                     case ParserState.WAITING_FOR_SECOND_NEWLINE: {
                         if (c === '\n') {
-                            this_.parser_state = ParserState.RESPONSE_COMPLETE;
+                            parser_state = ParserState.RESPONSE_COMPLETE;
                             // fetch the response
                             let s;
-                            while (s = this_.io.getOutputLine())
-                                this_.response_text += s + '<br>';
-                            resolve(this_.response_type == ResponseType.GOOD);
+                            while (true) {
+                                s = io.getOutputLine();
+                                if (s === null)
+                                    break;
+                                response.text += s + '\n';
+                                response.html += s + '<br>';
+                            }
+                            resolve(response);
                         } else {
-                            this_.parser_state = ParserState.WAITING_FOR_FIRST_NEWLINE;  // Didn't receive two consecutive newlines
+                            parser_state = ParserState.WAITING_FOR_FIRST_NEWLINE;  // Didn't receive two consecutive newlines
 
                         }
 
@@ -77,12 +118,9 @@ export default class Gtp {
         });
 
     }
-    public async command( s: string) : Promise<string>
+    public async command( s: string) : Promise<ParserResult>
     {
-        this.parser_state = ParserState.WAITING_FOR_RESPONSE_CHAR;
-        this.io.putInputString(s +"\n");
-        const response: boolean = await this.parse();
-        return this.response_text;
+        return this.parse(s);
 
     }
 }

@@ -1,7 +1,7 @@
 // Low level IO from emscripten
 /// <reference types="emscripten" />
 import {EventEmitter} from "eventemitter3";
-import {io, myModule} from "./index.js";
+import {myModule} from "./index.js";
 
 export default class IO extends EventEmitter {
 

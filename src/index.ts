@@ -29,7 +29,7 @@ function initStreams()
 m.preRun = [ initStreams ];
 m.postRun = [];
 
-// m.onRuntimeInitialized = (async () => { await onRuntimeInitialized() } );
+m.onRuntimeInitialized = (async () => { await onRuntimeInitialized() } );
 
 
 async function doGTPCommand(command: string): Promise<boolean> {
@@ -54,21 +54,21 @@ function setupDOM() {
                 inputElement.value = '';
     });
 
-    const sceneContainerElement: HTMLDivElement = document.querySelector(".scene") as HTMLDivElement;
-    const gameScene = new GameScene(sceneContainerElement);
+    const sceneCanvasElement: HTMLCanvasElement = document.querySelector("#scene-canvas") as HTMLCanvasElement;
+
+    const gameScene = new GameScene(sceneCanvasElement);
     gameScene.startAnimation();
 
 }
 
-(<any>window).initialized = false;
-export const myModule = em(m).then(async () => {
-    if ((<any>window).initialized)
-        return;
-    (<any>window).initialized = true;
-        io.on('err-eol', () => console.warn(io.getErrorLine()));
-        setupDOM();
-        await doGTPCommand("name");
-});
+const onRuntimeInitialized = async () => {
+
+    io.on('err-eol', () => console.warn(io.getErrorLine()));
+    setupDOM();
+    await doGTPCommand("name");
+};
+
+export const myModule = em(m);
 
 
 

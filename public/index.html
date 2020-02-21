@@ -1,56 +1,62 @@
 <!doctype html>
 <html lang="en-us">
-  <head>
+<head>
     <meta charset="utf-8">
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
     <title>GnuGo</title>
     <style>
-      .main-container {
-        /*display: flex;*/
+      body {
+        margin: 10px;
       }
-      .scene {
-        width: 100%;
-        height: 400px;
-      }
-      .console-input {
-        width: 100%;
-        background-color: black;
-        color: #ffffff;
-        font-family: 'Lucida Console', Monaco, monospace;
-      }
-      .console-input input {
-        border: none;
-      }
+        .main-container {
+            width: 100%;
+        }
 
-      .console-output {
-        white-space: pre;
-        width: 100%;
-        background-color: black;
-        color: #BCD631;
-        font-family: 'Lucida Console', Monaco, monospace;
-      }
-      .console-output.error {
-        color: #d60619;
-      }
+        #scene-canvas {
+            width: 100%;
+            height: 50%;
+          display: block;
+        }
+
+        .console-input {
+            width: 100%;
+            background-color: black;
+            color: #ffffff;
+            font-family: 'Lucida Console', Monaco, monospace;
+        }
+
+        .console-input input {
+            border: none;
+        }
+
+        .console-output {
+            white-space: pre;
+            width: 100%;
+            background-color: black;
+            color: #BCD631;
+            font-family: 'Lucida Console', Monaco, monospace;
+        }
+
+        .console-output.error {
+            color: #d60619;
+        }
 
     </style>
-  </head>
-  <body>
-  <div class="main-container">
+</head>
+<body>
+<div class="main-container">
 
-    <div class="scene"></div>
-  <div class="console-input">
-    <input class="console-input" type="text" id='console-input' value="TEST">
-  </div>
-   <script type='text/javascript' src="index.js"></script>
+    <canvas id="scene-canvas"></canvas>
+
+    <div class="console-input">
+        <input class="console-input" type="text" id='console-input' value="TEST">
 
     <div class="console-output"></div>
 
 
-
-   </div>
-  <script type='text/javascript' src="index.js"></script>
-  </body>
+</div>
+<script type='text/javascript' src="index.js"></script>
+</body>
 
 </html>
 

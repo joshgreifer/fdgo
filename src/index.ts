@@ -7,7 +7,7 @@ import {Module as em} from "./gnugo.js";
 //const em = require(  "./gnugo.js");
 import IO from "./IO";
 import Gtp, {ParserResult, ResponseType} from "./gtp";
-import GameScene from "./scene";
+import {GirlScene, SolarSystemScene, TestScene} from "./scene";
 
 //export{};
 
@@ -56,7 +56,9 @@ function setupDOM() {
 
     const sceneCanvasElement: HTMLCanvasElement = document.querySelector("#scene-canvas") as HTMLCanvasElement;
 
-    const gameScene = new GameScene(sceneCanvasElement);
+//     const gameScene = new TestScene(sceneCanvasElement);
+//     const gameScene = new SolarSystemScene(sceneCanvasElement);
+    const gameScene = new GirlScene(sceneCanvasElement);
     gameScene.startAnimation();
 
 }

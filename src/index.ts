@@ -60,11 +60,17 @@ async function setupDOM() {
 //     const gameScene = new SolarSystemScene(sceneCanvasElement);
     const gameScene = new GoScene(sceneCanvasElement);
     await gameScene.load_objects();
-    gameScene.update_board_from_gtp_coord(0, 'A1');
-    gameScene.update_board_from_gtp_coord(1, 'T1');
-    gameScene.update_board_from_gtp_coord(0, 'A19');
-    gameScene.update_board_from_gtp_coord(1, 'T19');
-    gameScene.update_board_from_gtp_coord(0, 'K10');
+    const positions = [
+        'A1 A19 K10', // black
+        'T1 T19 K11'  // white
+    ];
+    gameScene.update_board_from_gtp_list_stones(positions);
+
+    // gameScene.update_board_from_gtp_coord(0, 'A1');
+    // gameScene.update_board_from_gtp_coord(1, 'T1');
+    // gameScene.update_board_from_gtp_coord(0, 'A19');
+    // gameScene.update_board_from_gtp_coord(1, 'T19');
+    // gameScene.update_board_from_gtp_coord(0, 'K10');
     gameScene.startAnimation();
 
 }

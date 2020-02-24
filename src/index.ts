@@ -7,7 +7,7 @@ import {Module as em} from "./gnugo.js";
 //const em = require(  "./gnugo.js");
 import IO from "./IO";
 import Gtp, {ParserResult, ResponseType} from "./gtp";
-import {GirlScene, SolarSystemScene, TestScene} from "./scene";
+import {GoScene, SolarSystemScene, TestScene} from "./scene";
 
 //export{};
 
@@ -46,7 +46,7 @@ async function doGTPCommand(command: string): Promise<boolean> {
 
  }
 
-function setupDOM() {
+async function setupDOM() {
     const inputElement: HTMLInputElement = document.querySelector("#console-input") as HTMLInputElement;
     inputElement.addEventListener('keyup', async (evt: KeyboardEvent) => {
         if (evt.key === 'Enter')
@@ -58,7 +58,13 @@ function setupDOM() {
 
 //     const gameScene = new TestScene(sceneCanvasElement);
 //     const gameScene = new SolarSystemScene(sceneCanvasElement);
-    const gameScene = new GirlScene(sceneCanvasElement);
+    const gameScene = new GoScene(sceneCanvasElement);
+    await gameScene.load_objects();
+    gameScene.update_board_from_gtp_coord(0, 'A1');
+    gameScene.update_board_from_gtp_coord(1, 'T1');
+    gameScene.update_board_from_gtp_coord(0, 'A19');
+    gameScene.update_board_from_gtp_coord(1, 'T19');
+    gameScene.update_board_from_gtp_coord(0, 'K10');
     gameScene.startAnimation();
 
 }
@@ -66,7 +72,7 @@ function setupDOM() {
 const onRuntimeInitialized = async () => {
 
     io.on('err-eol', () => console.warn(io.getErrorLine()));
-    setupDOM();
+    await setupDOM();
     await doGTPCommand("name");
 };
 

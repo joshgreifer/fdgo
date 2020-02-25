@@ -132,6 +132,14 @@ export default class Gtp {
 
     public async command( s: string) : Promise<ParserResult>
     {
+        if (s === 'quit')
+            return {
+                command: s,
+                html: 'The quit command has been disabled in this implementation of GNU Go.',
+                id: 0,
+                response_type: ResponseType.BAD,
+                text: 'The quit command has been disabled in this implementation of GNU Go.',
+            };
         return this.parse(s);
 
     }

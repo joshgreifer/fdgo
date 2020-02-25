@@ -20,7 +20,7 @@ export class GoScene extends Scene
     private legal_gtp_coords!: string;
 
     public async load_objects() {
-        const shadow_material = new THREE.MeshBasicMaterial({ color: 0x000000, opacity: 0.5, transparent: true});
+        const shadow_material = new THREE.MeshBasicMaterial({ color: 0x000000, opacity: 0.7, transparent: true});
         const shadow =  new THREE.Mesh(new THREE.CircleBufferGeometry(.5, 32), shadow_material);
         shadow.rotateX(-Math.PI/2);
         shadow.position.set(0, 0.001, -0.1);

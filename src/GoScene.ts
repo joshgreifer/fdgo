@@ -104,7 +104,7 @@ export class GoScene extends Scene
 
     }
 
-    private async update_board_from_gtp() {
+    public async update_board_from_gtp() {
         const black_stones = await gtp.command('list_stones black');
         const white_stones = await gtp.command('list_stones white');
         this.update_board_from_gtp_list_stones([black_stones.text, white_stones.text]);

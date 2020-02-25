@@ -51,12 +51,6 @@ async function doGTPCommand(command: string): Promise<boolean> {
 
 
 async function setupDOM() {
-    const inputElement: HTMLInputElement = document.querySelector("#console-input") as HTMLInputElement;
-    inputElement.addEventListener('keyup', async (evt: KeyboardEvent) => {
-        if (evt.key === 'Enter')
-            if (await doGTPCommand(inputElement.value))
-                inputElement.value = '';
-    });
 
     const sceneCanvasElement: HTMLCanvasElement = document.querySelector("#scene-canvas") as HTMLCanvasElement;
 
@@ -76,6 +70,16 @@ async function setupDOM() {
     // gameScene.update_board_from_gtp_coord(1, 'T19');
     // gameScene.update_board_from_gtp_coord(0, 'K10');
     gameScene.startAnimation();
+
+    const inputElement: HTMLInputElement = document.querySelector("#console-input") as HTMLInputElement;
+
+    inputElement.addEventListener('keyup', async (evt: KeyboardEvent) => {
+        if (evt.key === 'Enter')
+            if (await doGTPCommand(inputElement.value)) {
+                inputElement.value = '';
+                await gameScene.update_board_from_gtp();
+            }
+    });
 
 }
 

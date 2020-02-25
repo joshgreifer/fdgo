@@ -51,7 +51,7 @@ export default class Gtp {
         io.removeAllListeners('out-c');
         io.putInputString(command +"\n");
 
-        return new Promise<ParserResult>((resolve, reject) => {
+         return new Promise<ParserResult>((resolve, reject) => {
             io.on('out-c', (c: string) => {
                 switch (parser_state) {
                     case ParserState.WAITING_FOR_RESPONSE_CHAR: {
@@ -105,6 +105,14 @@ export default class Gtp {
                                 response.text += s + '\n';
                                 response.html += s + '<br>';
                             }
+                            // strip trailing newlines
+                            response.text = response.text.replace(/\n+$/, '');
+                            console.log(command);
+                            if (response.response_type == ResponseType.GOOD)
+                                console.log(response.text);
+                            else
+                                console.warn(response.text);
+
                             resolve(response);
                         } else {
                             parser_state = ParserState.WAITING_FOR_FIRST_NEWLINE;  // Didn't receive two consecutive newlines
@@ -118,6 +126,10 @@ export default class Gtp {
         });
 
     }
+
+    public static colorToGtpColor(color: number) {  return color == 0 ? 'black' : 'white';}
+    public static gtpColorToColor(colorStr: string) {  return colorStr  == 'black' ? 0 : 1; }
+
     public async command( s: string) : Promise<ParserResult>
     {
         return this.parse(s);

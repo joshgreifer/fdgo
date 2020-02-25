@@ -7,7 +7,7 @@ import {Module as em} from "./gnugo.js";
 //const em = require(  "./gnugo.js");
 import IO from "./IO";
 import Gtp, {ParserResult, ResponseType} from "./gtp";
-import {GoScene, SolarSystemScene, TestScene} from "./scene";
+import {GoScene} from "./goscene";
 
 //export{};
 
@@ -46,6 +46,10 @@ async function doGTPCommand(command: string): Promise<boolean> {
 
  }
 
+
+
+
+
 async function setupDOM() {
     const inputElement: HTMLInputElement = document.querySelector("#console-input") as HTMLInputElement;
     inputElement.addEventListener('keyup', async (evt: KeyboardEvent) => {
@@ -60,11 +64,11 @@ async function setupDOM() {
 //     const gameScene = new SolarSystemScene(sceneCanvasElement);
     const gameScene = new GoScene(sceneCanvasElement);
     await gameScene.load_objects();
-    const positions = [
-        'A1 A19 K10', // black
-        'T1 T19 K11'  // white
-    ];
-    gameScene.update_board_from_gtp_list_stones(positions);
+    // const positions = [
+    //     'A1 A19 K10', // black
+    //     'T1 T19 K11'  // white
+    // ];
+    // gameScene.update_board_from_gtp_list_stones(positions);
 
     // gameScene.update_board_from_gtp_coord(0, 'A1');
     // gameScene.update_board_from_gtp_coord(1, 'T1');

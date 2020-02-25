@@ -17,17 +17,27 @@ export class GoScene extends Scene
     private readonly square_size = 0.051;
     private cursorGTPCoord: string = '';
     private thinking: boolean = false;
+    private legal_gtp_coords!: string;
 
     public async load_objects() {
+        const shadow_material = new THREE.MeshBasicMaterial({ color: 0x000000, opacity: 0.5, transparent: true});
+        const shadow =  new THREE.Mesh(new THREE.CircleBufferGeometry(.5, 32), shadow_material);
+        shadow.rotateX(-Math.PI/2);
+        shadow.position.set(0, 0.001, -0.1);
+        const response = await gtp.command('all_legal black');
+        this.legal_gtp_coords = response.text;
 
         const go_stone_black = await this.load_gltf('go-stone-black');
         let stone = go_stone_black.clone();
+        stone.add(shadow.clone());
         stone.position.setY(0.5213725566864014);
         stone.scale.set(1 / 20, 1 / 20, 1 / 20);
         this.stone_protos.push(stone);
 
         const go_stone_white = await this.load_gltf('go-stone-white');
         stone = go_stone_white.clone();
+
+        stone.add(shadow.clone());
         stone.position.setY(0.5213725566864014);
         stone.scale.set(1 / 20, 1 / 20, 1 / 20);
         this.stone_protos.push(stone);
@@ -43,8 +53,8 @@ export class GoScene extends Scene
         const boxCenter = box.getCenter(new THREE.Vector3());
 
         // set the camera to frame the box
-        this.frameArea(boxSize * 10, boxSize, boxCenter, this.camera);
-
+        // this.frameArea(boxSize * 2, boxSize, boxCenter, this.camera);
+        this.camera.lookAt(boxCenter.x, boxCenter.y, boxCenter.z);
         // update the Trackball controls to handle the new size
         this.controls.maxDistance = boxSize * 10;
         this.controls.target.copy(boxCenter);
@@ -116,6 +126,8 @@ export class GoScene extends Scene
             }
 
         }
+        response = await gtp.command('all_legal black');
+        this.legal_gtp_coords = response.text;
         this.thinking = false;
     }
 
@@ -127,26 +139,27 @@ export class GoScene extends Scene
  //       const cursor = this.cursor =  new THREE.Mesh(new THREE.CircleBufferGeometry(1/20 * .5, 32), new THREE.MeshBasicMaterial({ color: 0xff0000, opacity: 0.5, transparent: true}));
         const cursor_legal_material = new THREE.MeshBasicMaterial({ color: 0x000000, opacity: 0.5, transparent: true});
         const cursor_illegal_material = new THREE.MeshBasicMaterial({ color: 0xff0000, opacity: 0.5, transparent: true});
-        const cursor_thinking_material = new THREE.MeshBasicMaterial({ color: 0xffffff, opacity: 0.5, transparent: true});
+        const cursor_thinking_material = new THREE.MeshBasicMaterial({ color: 0xffffff, opacity: 0.2, transparent: true});
         const cursor = this.cursor =  new THREE.Mesh(new THREE.CircleBufferGeometry(1/20 * .5, 32), cursor_legal_material);
 
         cursor.rotateX(-Math.PI/2);
         let goban:  THREE.Scene;
         // Change the camera fov to 40 from its default of 70
         camera.fov = 45;
-        camera.position.set(0, 100, 200);
+        camera.position.set(0, 1.5, .667);
+
 
         this.controls = new OrbitControls(camera, canvas);
         this.controls.target.set(0, 100, 0);
         this.controls.update();
 
         const this_ =  this;
-        canvas.onclick = async () => { await this.playStone(0, this.cursorGTPCoord)};
+        canvas.ondblclick = async () => { if (!this.thinking) this.playStone(0, this.cursorGTPCoord)};
 
         scene.add(cursor);
 
         {
-            const skyColor = 0xB1E1FF;  // light blue
+            const skyColor = 0xE1E1FF;  // light blue
             const groundColor = 0xB97A20;  // brownish orange
             const intensity = 1;
             const light = new THREE.HemisphereLight(skyColor, groundColor, intensity);
@@ -155,9 +168,9 @@ export class GoScene extends Scene
 
         {
             const color = 0xFFFFFF;
-            const intensity = 1;
+            const intensity =.5;
             const light = new THREE.DirectionalLight(color, intensity);
-            light.position.set(5, 5, 10);
+            light.position.set(0, 5, 10);
             scene.add(light);
             scene.add(light.target);
         }
@@ -174,17 +187,16 @@ export class GoScene extends Scene
                         const y = intersect.point.y + .001;
                         this.cursor.position.set(x, y, z);
                         const gtp_coord = this.rowCol2GtpCoord(row, col);
-                        if (this.cursorGTPCoord !== gtp_coord) {
-                            console.log(gtp_coord);
+ //                       if (this.cursorGTPCoord !== gtp_coord || this.thinking) {
+ //                           console.log(gtp_coord);
                             this.cursorGTPCoord = gtp_coord;
                             if (this.thinking) {
                                 cursor.material = cursor_thinking_material;
                             } else {
-                                gtp.command('is_legal black ' + gtp_coord).then((result: ParserResult) => {
-                                    cursor.material = result.text == '1' ? cursor_legal_material : cursor_illegal_material;
-                                });
+                                cursor.material = cursor_legal_material;
+                                cursor.material = this.legal_gtp_coords.includes(gtp_coord) ? cursor_legal_material : cursor_illegal_material;
                             }
-                        }
+ //                       }
                     }
 
                     break;

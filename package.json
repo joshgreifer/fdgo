@@ -1,7 +1,7 @@
 {
   "scripts": {
     "build-and-serve": "webpack --config webpack.config.js && webserver 5000 dist/",
-    "build-webpack": "webpack --config webpack.config.js",
+    "build-webpack": "webpack --config webpack.config.js --mode production",
     "build-rollup": "rollup --config",
     "build-echo": "emcc -s EXIT_RUNTIME=0 -s TOTAL_MEMORY=33554432 -s ENVIRONMENT=web -s MODULARIZE=1 -s EXTRA_EXPORTED_RUNTIME_METHODS='[\"intArrayFromString\", \"intArrayToString\", \"FS\"]' -s ASYNCIFY=1 -s ASSERTIONS=1 src/echo.cpp -o src/echo.js && cp src/echo.wasm public/ && webpack --config webpack.config.js"
   },

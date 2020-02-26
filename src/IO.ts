@@ -15,25 +15,6 @@ export default class IO extends EventEmitter {
         this.emit('input');
     }
 
-    // getInput(): number | null {
-    //     return this.inBuf_.length ? this.inBuf_.shift() as number : null;
-    // }
-
-    // private putOutput_( c: number, buf : number[]) {
-    //     const evt_prefix = buf === this.outBuf_ ? 'out-' : 'err-'
-    //     buf.push(c);
-    //     this.emit(evt_prefix + 'c', String.fromCharCode(c));
-    //     if (c === '\n'.charCodeAt(0)) {
-    //         this.emit(evt_prefix +  'eol');
-    //     }
-    // }
-    // putOutput( c: number) {
-    //     this.putOutput_(c, this.outBuf_);
-    // }
-    // putError( c: number) {
-    //     this.putOutput_(c, this.errBuf_);
-    // }
-
     private getOutputString_(buf: number[]) : string | null {
         const s =  myModule.intArrayToString(buf);
         buf.splice(0);
@@ -64,46 +45,26 @@ export default class IO extends EventEmitter {
         return this.getOutputString_(this.errBuf_);
     }
     async initStreams() {
-        // const inBuf_: number[] = [];
-        // const outBuf_: number[] = [];
-        // const errBuf_: number[] = [];
 
-        // this.putInputString("help\n");
-        // this.putInputString("showboard\n");
+        const CharCodeNewLine =  '\n'.charCodeAt(0);
 
-
-        const this_ = this;
-        const putOutput_ = (c: number, buf: number[]) => {
-            const evt_prefix = buf === this_.outBuf_ ? 'out-' : 'err-'
+        const putOutput_ = ((c: number, buf: number[]) => {
+            const evt_prefix = buf === this.outBuf_ ? 'out-' : 'err-'
             buf.push(c);
-            this_.emit(evt_prefix + 'c', String.fromCharCode(c));
-            if (c === '\n'.charCodeAt(0)) {
-                this_.emit(evt_prefix + 'eol');
+            this.emit(evt_prefix + 'c', String.fromCharCode(c));
+            if (c === CharCodeNewLine) {
+                this.emit(evt_prefix + 'eol');
             }
-        }
-
-        const getch = (): number | null => {
-
-            for (;;)
-                if (this.inBuf_.length)
-                    return this.inBuf_.shift() as number;
-                else // https://stackoverflow.com/questions/951021/what-is-the-javascript-version-of-sleep
-                    setTimeout(() => {}, 100);
-        };
+        });
 
         myModule.FS.init(
-             () => {
-                 for (;;)
-                     if (this.inBuf_.length)
-                         return this.inBuf_.shift() as number;
-                     else
-                         return null;
+             () => this.inBuf_.shift() || null
+            ,
+            (charCode: number) => {
+                putOutput_(charCode, this.outBuf_);
             },
             (charCode: number) => {
-                putOutput_(charCode, this_.outBuf_);
-            },
-            (charCode: number) => {
-                putOutput_(charCode, this_.errBuf_);
+                putOutput_(charCode, this.errBuf_);
             }
         );
     }

@@ -32,7 +32,7 @@ export interface ParserResult
 
 export default class Gtp {
 
-
+    private id = 1;
     constructor(private io: IO) {
     }
 
@@ -47,7 +47,12 @@ export default class Gtp {
         };
 
         const io = this.io;
-        let id = 0;
+        let command_id = Number.parseInt(command);
+        let response_id = 0;
+        if (isNaN(command_id)) {
+            command_id = this.id++;
+            command = '' + command_id + ' ' + command;
+        }
         io.removeAllListeners('out-c');
         io.putInputString(command +"\n");
 
@@ -69,17 +74,17 @@ export default class Gtp {
                     }
                     case ParserState.WAITING_FOR_ID: {
                         if (c === ' ') {
-                            response.id = id;
+                            response.id = response_id;
                             parser_state = ParserState.WAITING_FOR_FIRST_NEWLINE;
                             io.getOutputString(); // gobble output buffer
                         } else  if (c === '\n') {
-                            response.id = id;
+                            response.id = response_id;
                             parser_state = ParserState.WAITING_FOR_SECOND_NEWLINE;
                         } else {
                             const digit = "0123456789".indexOf(c);
                             if (digit >= 0) {
-                                id *= 10;
-                                id += digit;
+                                response_id *= 10;
+                                response_id += digit;
                             } else {
                                 throw new Error("Expected digit, space or newline, got '" + c + "' (" + c.charCodeAt(0) + ")");
 
@@ -98,7 +103,7 @@ export default class Gtp {
                             parser_state = ParserState.RESPONSE_COMPLETE;
                             // fetch the response
                             let s;
-                            while (true) {
+                            for (;;) {
                                 s = io.getOutputLine();
                                 if (s === null)
                                     break;
@@ -107,11 +112,12 @@ export default class Gtp {
                             }
                             // strip trailing newlines
                             response.text = response.text.replace(/\n+$/, '');
-                            console.log(command);
-                            if (response.response_type == ResponseType.GOOD)
-                                console.log(response.text);
-                            else
-                                console.warn(response.text);
+                            const command_css_style = response.response_type == ResponseType.GOOD ? 'color:white' : 'color:red';
+                            const response_css_style = response.response_type == ResponseType.GOOD ? 'color:yellow' : 'color:red';
+                            command = command.replace(/^\d+ /, '');
+                            console.log(`%c(${command_id}) %c${command}`, 'color:cyan', command_css_style);
+                            console.log(`%c(${response.id}) %c${response.text}`, 'color:cyan', response_css_style);
+
 
                             resolve(response);
                         } else {

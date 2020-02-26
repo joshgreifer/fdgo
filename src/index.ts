@@ -88,6 +88,7 @@ const onRuntimeInitialized = async () => {
     io.on('err-eol', () => console.warn(io.getErrorLine()));
     await setupDOM();
     await doGTPCommand("name");
+    await doGTPCommand("boardsize 9");
     await doGTPCommand("level 1");
 
 };

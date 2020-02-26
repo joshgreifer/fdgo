@@ -4,16 +4,13 @@
 import IO from "./IO";
 
 enum ParserState {
-    NOTHING_RECEIVED,
     WAITING_FOR_RESPONSE_CHAR,
     WAITING_FOR_ID,
     WAITING_FOR_FIRST_NEWLINE,
     WAITING_FOR_SECOND_NEWLINE,
     PARSER_ERROR,
     RESPONSE_COMPLETE
-
-
-};
+}
 
 export enum ResponseType {
     UNKNOWN,
@@ -56,6 +53,11 @@ export default class Gtp {
         io.removeAllListeners('out-c');
         io.putInputString(command +"\n");
 
+        {
+            const command_css_style = 'color:white';
+            const command_stripped_of_id = command.replace(/^\d+ /, '');
+            console.log(`%c>> ${command_id} %c${command_stripped_of_id}`, 'color:cyan', command_css_style);
+        }
          return new Promise<ParserResult>((resolve, reject) => {
             io.on('out-c', (c: string) => {
                 switch (parser_state) {
@@ -112,11 +114,8 @@ export default class Gtp {
                             }
                             // strip trailing newlines
                             response.text = response.text.replace(/\n+$/, '');
-                            const command_css_style = response.response_type == ResponseType.GOOD ? 'color:white' : 'color:red';
                             const response_css_style = response.response_type == ResponseType.GOOD ? 'color:yellow' : 'color:red';
-                            command = command.replace(/^\d+ /, '');
-                            console.log(`%c(${command_id}) %c${command}`, 'color:cyan', command_css_style);
-                            console.log(`%c(${response.id}) %c${response.text}`, 'color:cyan', response_css_style);
+                            console.log(`%c<< ${response.id} %c${response.text}`, 'color:cyan', response_css_style);
 
 
                             resolve(response);

@@ -14,12 +14,19 @@ export class GoScene extends Scene
     private controls: OrbitControls;
 
     private cursor: THREE.Mesh;
-    private readonly square_size = 0.051;
     private cursorGTPCoord: string = '';
     private thinking: boolean = false;
     private legal_gtp_coords!: string;
 
+    private readonly fudge_factor_19 = 0.001;
+    private readonly fudge_factor_9 = 0.01;
+    private readonly board_size = 9;
+    private readonly unit_size = 1/(this.board_size+1);
+    private readonly square_size = this.unit_size + this.fudge_factor_9;
+
+
     public async load_objects() {
+        const unit_size = this.unit_size;
         const shadow_material = new THREE.MeshBasicMaterial({ color: 0x000000, opacity: 0.7, transparent: true});
         const shadow =  new THREE.Mesh(new THREE.CircleBufferGeometry(.5, 32), shadow_material);
         shadow.rotateX(-Math.PI/2);
@@ -31,7 +38,7 @@ export class GoScene extends Scene
         let stone = go_stone_black.clone();
         stone.add(shadow.clone());
         stone.position.setY(0.5213725566864014);
-        stone.scale.set(1 / 20, 1 / 20, 1 / 20);
+        stone.scale.set(unit_size, unit_size, unit_size);
         this.stone_protos.push(stone);
 
         const go_stone_white = await this.load_gltf('go-stone-white');
@@ -39,10 +46,11 @@ export class GoScene extends Scene
 
         stone.add(shadow.clone());
         stone.position.setY(0.5213725566864014);
-        stone.scale.set(1 / 20, 1 / 20, 1 / 20);
+        stone.scale.set(unit_size, unit_size, unit_size);
         this.stone_protos.push(stone);
 
-        const goban = await this.load_gltf('goban');
+        const goban = await this.load_gltf('goban9x9');
+ //       const goban = await this.load_gltf('goban');
         this.scene.add(goban);
 
         // compute the box that contains all the stuff
@@ -91,13 +99,14 @@ export class GoScene extends Scene
     // GTP coordinates are 'A1' (bottom left) to 'T19' (top right) - skipping 'I' in the alphabet
     public update_board_from_gtp_coord(color: number, coord: string, add_to_scene: boolean = true) {
         const square_size = this.square_size;
+        const half_size = (this.board_size - 1) / 2;
         let column = coord.charCodeAt(0) - 'A'.charCodeAt(0);
         if (column > 7) --column; // no 'I'
         let row = Number.parseInt(coord.substring(1))-1;
         const stone = this.stone_protos[color].clone();
         // Board is centered at 0,0
-        stone.position.setX((column-9) * square_size);
-        stone.position.setZ((row-9 ) * square_size);
+        stone.position.setX((column-half_size) * square_size);
+        stone.position.setZ((row-half_size ) * square_size);
         this.played_stones.push(stone);
         if (add_to_scene)
             this.scene.add(stone);
@@ -140,7 +149,7 @@ export class GoScene extends Scene
         const cursor_legal_material = new THREE.MeshBasicMaterial({ color: 0x000000, opacity: 0.5, transparent: true});
         const cursor_illegal_material = new THREE.MeshBasicMaterial({ color: 0xff0000, opacity: 0.5, transparent: true});
         const cursor_thinking_material = new THREE.MeshBasicMaterial({ color: 0xffffff, opacity: 0.2, transparent: true});
-        const cursor = this.cursor =  new THREE.Mesh(new THREE.CircleBufferGeometry(1/20 * .5, 32), cursor_legal_material);
+        const cursor = this.cursor =  new THREE.Mesh(new THREE.CircleBufferGeometry(this.unit_size * .5, 32), cursor_legal_material);
 
         cursor.rotateX(-Math.PI/2);
         let goban:  THREE.Scene;
@@ -177,11 +186,12 @@ export class GoScene extends Scene
 
         this.updateScene = (scene: THREE.Scene, time: number) => {
             const intersects = this.mouse_intersects;
+            const limit_coord = (this.board_size+1)/2;
             for (const intersect of intersects) {
                 if (intersect.object.name === 'goban') {
                     const col = Math.round(intersect.point.x / this.square_size);
                     const row = Math.round(intersect.point.z / this.square_size);
-                    if (row > -10 && row < 10 && col > -10 && col < 10) {
+                    if (row > -limit_coord && row < limit_coord && col > -limit_coord && col < limit_coord) {
                          const x = col * this.square_size;
                         const z = row * this.square_size;
                         const y = intersect.point.y + .001;
@@ -209,8 +219,8 @@ export class GoScene extends Scene
 
     // -9 <= row <= 9, -9 <= col <= 9
     private rowCol2GtpCoord(row: number, column: number) : string {
-        column += 9;
-        row += 10;
+        column += (this.board_size-1)/2;
+        row += (this.board_size+1)/2;
         return 'ABCDEFGHJKLMNOPQRST'.substr(column,1) + row;
 
     }

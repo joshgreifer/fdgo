@@ -26,6 +26,7 @@ export class GoScene extends Scene
 
 
     public async load_objects() {
+        const texture_loader = new THREE.TextureLoader();
         const unit_size = this.unit_size;
         const shadow_material = new THREE.MeshBasicMaterial({ color: 0x000000, opacity: 0.7, transparent: true});
         const shadow =  new THREE.Mesh(new THREE.CircleBufferGeometry(.5, 32), shadow_material);
@@ -36,6 +37,7 @@ export class GoScene extends Scene
 
         const go_stone_black = await this.load_gltf('go-stone-black');
         let stone = go_stone_black.clone();
+
         stone.add(shadow.clone());
         stone.position.setY(0.5213725566864014);
         stone.scale.set(unit_size, unit_size, unit_size);
@@ -49,9 +51,38 @@ export class GoScene extends Scene
         stone.scale.set(unit_size, unit_size, unit_size);
         this.stone_protos.push(stone);
 
+        const floor_geometry = new THREE.PlaneBufferGeometry(10,10);
+
+        const floor_texture = texture_loader.load('assets/tex/masonry-wall-texture.jpg');
+        const floor_texture_normal = texture_loader.load('assets/tex/masonry-wall-normal-map.jpg');
+        const floor_texture_bump = texture_loader.load('assets/tex/masonry-wall-bump-map.jpg');
+
+        for (const texture of [floor_texture, floor_texture_normal, floor_texture_bump]) {
+            texture.wrapS = THREE.RepeatWrapping;
+            texture.wrapT = THREE.RepeatWrapping;
+            texture.repeat.set(4, 4);
+        }
+
+        const floor_material = new THREE.MeshStandardMaterial( {bumpMap: floor_texture_bump, map: floor_texture} );
+//        const floor_material = new THREE.MeshPhongMaterial( {map: floor_texture} );
+        const floor = new THREE.Mesh( floor_geometry, floor_material);
+        floor.rotateX(-Math.PI/2);
+        floor.receiveShadow = true;
+        this.scene.add(floor);
+
         const goban = await this.load_gltf('goban9x9');
+        for (const obj of goban.children) {
+            obj.castShadow = true;
+            if (obj.name !== 'goban')
+                obj.receiveShadow = true; // legs
+
+        }
+
+
  //       const goban = await this.load_gltf('goban');
-        this.scene.add(goban);
+
+         this.scene.add(goban);
+
 
         // compute the box that contains all the stuff
         // from root and below
@@ -144,6 +175,9 @@ export class GoScene extends Scene
         super(canvas);
         const scene = this.scene;
         const camera = this.camera;
+        const renderer = this.renderer;
+
+        renderer.shadowMap.enabled = true;
 
  //       const cursor = this.cursor =  new THREE.Mesh(new THREE.CircleBufferGeometry(1/20 * .5, 32), new THREE.MeshBasicMaterial({ color: 0xff0000, opacity: 0.5, transparent: true}));
         const cursor_legal_material = new THREE.MeshBasicMaterial({ color: 0x000000, opacity: 0.5, transparent: true});
@@ -172,16 +206,20 @@ export class GoScene extends Scene
             const groundColor = 0xB97A20;  // brownish orange
             const intensity = 1;
             const light = new THREE.HemisphereLight(skyColor, groundColor, intensity);
-            scene.add(light);
+             scene.add(light);
         }
 
         {
             const color = 0xFFFFFF;
-            const intensity =.5;
+            const intensity = .7;
             const light = new THREE.DirectionalLight(color, intensity);
-            light.position.set(0, 5, 10);
+
+            light.position.set(2, 10, 5);
+            light.castShadow = true;
             scene.add(light);
-            scene.add(light.target);
+            // scene.add(light.target);
+            const cameraHelper = new THREE.CameraHelper(light.shadow.camera);
+            scene.add(cameraHelper);
         }
 
         this.updateScene = (scene: THREE.Scene, time: number) => {

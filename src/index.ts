@@ -32,7 +32,7 @@ m.postRun = [];
 m.onRuntimeInitialized = (async () => { await onRuntimeInitialized() } );
 
 
-async function doGTPCommand(command: string): Promise<boolean> {
+export async function doGTPCommand(command: string): Promise<boolean> {
     const outputElement: HTMLDivElement = document.querySelector(".console-output") as HTMLDivElement;
     const response: ParserResult = await gtp.command(command);
 
@@ -80,6 +80,19 @@ async function setupDOM() {
                 await gameScene.update_board_from_gtp();
             }
     });
+
+    const undoButton: HTMLDivElement = document.querySelector(".undo-icon") as HTMLDivElement;
+    undoButton.addEventListener('click', async (evt: MouseEvent) => {
+            const resp = await gtp.command('last_move');
+            if (resp.text.match(/^white/) ) {
+                inputElement.value = 'undo';
+                if (await doGTPCommand("undo") && await doGTPCommand("undo")) {
+                    gameScene.update_board_from_gtp();
+                }
+            }
+
+    });
+
 
 }
 

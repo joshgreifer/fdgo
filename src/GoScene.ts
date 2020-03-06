@@ -4,13 +4,16 @@ import {OrbitControls} from "three/examples/jsm/controls/OrbitControls";
 import {GLTFLoader} from "three/examples/jsm/loaders/GLTFLoader";
 import {Vector3} from "three";
 import {Scene} from "./scene";
-import {gtp} from "./index";
+import {doGTPCommand, gtp} from "./index";
 import Gtp, {ParserResult, ResponseType} from "./gtp";
 
 export class GoScene extends Scene
 {
-    private stone_protos: THREE.Scene[] = [];
-    private played_stones:THREE.Scene[] = [];
+
+    private directional_light: THREE.DirectionalLight;
+
+    private stone_protos: (THREE.Scene | THREE.Mesh) [] = [];
+    private played_stones:(THREE.Scene | THREE.Mesh) [] = [];
     private controls: OrbitControls;
 
     private cursor: THREE.Mesh;
@@ -23,33 +26,57 @@ export class GoScene extends Scene
     private readonly board_size = 9;
     private readonly unit_size = 1/(this.board_size+1);
     private readonly square_size = this.unit_size + this.fudge_factor_9;
+    private readonly stone_white_material = new THREE.MeshStandardMaterial({ color: 0xffffff,  roughness: 0.1, metalness: .5});
+    private readonly stone_black_material = new THREE.MeshStandardMaterial({ color: 0x141414,  roughness: 0.4, metalness: .1});
 
+    private new_stone(color: number) : THREE.Scene
+    {
+        const stone: THREE.Scene = new THREE.Scene;
+        const stone_geometry = new THREE.SphereBufferGeometry(.5, 32, 32);
+        const stone_material = color == 0 ? this.stone_black_material : this.stone_white_material;
+        const stone_mesh =  new THREE.Mesh(stone_geometry, stone_material);
+        stone_mesh.scale.setY(0.5714289986414873);
+        stone_mesh.position.setY(0.5714289986414873/2);
+        stone.add(stone_mesh);
+        return stone;
+
+    }
 
     public async load_objects() {
         const texture_loader = new THREE.TextureLoader();
         const unit_size = this.unit_size;
-        const shadow_material = new THREE.MeshBasicMaterial({ color: 0x000000, opacity: 0.7, transparent: true});
-        const shadow =  new THREE.Mesh(new THREE.CircleBufferGeometry(.5, 32), shadow_material);
-        shadow.rotateX(-Math.PI/2);
-        shadow.position.set(0, 0.001, -0.1);
+
+        const shadow_texture = texture_loader.load('assets/tex/stone-shadow-texture.png');
+
+        const stone_shadow_material = new THREE.MeshBasicMaterial({ map: shadow_texture, depthWrite: false, transparent: true});
+        const stone_shadow =  new THREE.Mesh(new THREE.CircleBufferGeometry(.5, 32), stone_shadow_material);
+
+        stone_shadow.rotateX(-Math.PI/2);
         const response = await gtp.command('all_legal black');
         this.legal_gtp_coords = response.text;
 
-        const go_stone_black = await this.load_gltf('go-stone-black');
-        let stone = go_stone_black.clone();
+        this.stone_protos = [
+            this.new_stone(0),
+            this.new_stone(1),
+            // await this.load_gltf('go-stone-black'),
+            // await this.load_gltf('go-stone-white')
+        ];
 
-        stone.add(shadow.clone());
-        stone.position.setY(0.5213725566864014);
-        stone.scale.set(unit_size, unit_size, unit_size);
-        this.stone_protos.push(stone);
+        // Offset the shadow disk
+        const box1 = new THREE.Box3().setFromObject( this.stone_protos[0] );
+        const stone_half_height = box1.max.y / 2;
+        console.log("stone_height", box1.max.y - box1.min.y);
+        const light_pos = this.directional_light.position;
+        const x_offset = -light_pos.x / light_pos.y  * stone_half_height;
+        const z_offset = -light_pos.z / light_pos.y  * stone_half_height;
 
-        const go_stone_white = await this.load_gltf('go-stone-white');
-        stone = go_stone_white.clone();
+        stone_shadow.position.set(x_offset, 0.001, z_offset);
 
-        stone.add(shadow.clone());
-        stone.position.setY(0.5213725566864014);
-        stone.scale.set(unit_size, unit_size, unit_size);
-        this.stone_protos.push(stone);
+        for (const stone of this.stone_protos) {
+            stone.add(stone_shadow.clone());
+            stone.position.setY(0.5213725566864014);
+            stone.scale.set(unit_size, unit_size, unit_size);
+        }
 
         const floor_geometry = new THREE.PlaneBufferGeometry(10,10);
 
@@ -70,8 +97,8 @@ export class GoScene extends Scene
         floor.receiveShadow = true;
         this.scene.add(floor);
 
-        const goban = await this.load_gltf('goban9x9');
-        for (const obj of goban.children) {
+        const goban_scene = await this.load_gltf('goban9x9');
+        for (const obj of goban_scene.children) {
             obj.castShadow = true;
             if (obj.name !== 'goban')
                 obj.receiveShadow = true; // legs
@@ -79,14 +106,12 @@ export class GoScene extends Scene
         }
 
 
- //       const goban = await this.load_gltf('goban');
-
-         this.scene.add(goban);
+         this.scene.add(goban_scene);
 
 
         // compute the box that contains all the stuff
         // from root and below
-        const box = new THREE.Box3().setFromObject(goban);
+        const box = new THREE.Box3().setFromObject(goban_scene);
 
         const boxSize = box.getSize(new THREE.Vector3()).length();
         const boxCenter = box.getCenter(new THREE.Vector3());
@@ -106,11 +131,13 @@ export class GoScene extends Scene
     private async load_gltf(object_name: string): Promise<THREE.Scene> {
         return new Promise<THREE.Scene>((resolve, reject) => {
             const gltfLoader = new GLTFLoader();
-
-            gltfLoader.load(`/assets/gltf/${object_name}.gltf`, (gltf) => {
-                resolve(gltf.scene);
-
-            });
+            try {
+                gltfLoader.load(`/assets/gltf/${object_name}.gltf`, (gltf) => {
+                    resolve(gltf.scene);
+                });
+            } catch (e) {
+                reject();
+            }
         });
     }
 
@@ -155,19 +182,14 @@ export class GoScene extends Scene
             return;
         this.thinking = true;
         const color_str = Gtp.colorToGtpColor(color);
-        let response: ParserResult = await gtp.command('play ' + color_str + ' ' + gtp_coord);
 
-        if (response.response_type == ResponseType.GOOD) {
 
-            response = await gtp.command('genmove ' + Gtp.colorToGtpColor(1 - color));
 
-            if (response.response_type == ResponseType.GOOD) {
+        if (await doGTPCommand('play ' + color_str + ' ' + gtp_coord))
+            if (await doGTPCommand('genmove ' + Gtp.colorToGtpColor(1 - color)))
                 await this.update_board_from_gtp();
-            }
 
-        }
-        response = await gtp.command('all_legal black');
-        this.legal_gtp_coords = response.text;
+        this.legal_gtp_coords = (await gtp.command('all_legal black')).text;
         this.thinking = false;
     }
 
@@ -210,9 +232,9 @@ export class GoScene extends Scene
         }
 
         {
-            const color = 0xFFFFFF;
+            const color = 0xEFEFFF;
             const intensity = .7;
-            const light = new THREE.DirectionalLight(color, intensity);
+            const light = this.directional_light = new THREE.DirectionalLight(color, intensity);
 
             light.position.set(2, 10, 5);
             light.castShadow = true;

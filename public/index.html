@@ -8,6 +8,14 @@
       body {
         margin: 10px;
       }
+
+      .undo-icon {
+          position: absolute;
+          z-index: 1000;
+          width: 64px;
+          height: 64px
+      }
+
         .main-container {
             width: 100%;
         }
@@ -46,13 +54,19 @@
 <body>
 <div class="main-container">
 
-    <canvas id="scene-canvas"></canvas>
+    <div class="undo-icon">
+        <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'>
+            <path d='M240,424V328c116.4,0,159.39,33.76,208,96,0-119.23-39.57-240-208-240V88L64,256Z' style='fill:#ffffff;stroke:#ff0000;stroke-linejoin:round;stroke-width:30px'/>
+        </svg>
+
+    </div>
+     <canvas id="scene-canvas"></canvas>
 
     <div class="console-input">
         <input class="console-input" type="text" id='console-input' value="TEST">
 
-    <div class="console-output"></div>
-
+        <div class="console-output"></div>
+    </div>
 
 </div>
 <script type='text/javascript' src="index.js"></script>
